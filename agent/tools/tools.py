@@ -2,10 +2,11 @@ from langchain.tools import tool
 import subprocess
 import os
 
-
+#мейби можно добавить автоматизированное получение приложений из реестра
 APPS = {
     'tmodloader': r'C:\Users\Oat\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Steam\tModLoader.url'
 }
+
 
 @tool
 def open_app_by_name(name: str)->str:
