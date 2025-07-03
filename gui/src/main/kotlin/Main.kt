@@ -77,6 +77,7 @@ fun App(messages: MutableList<String>) {
                                 buttonState = true
                             }
                         }
+                        currentValue = ""
                     }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
