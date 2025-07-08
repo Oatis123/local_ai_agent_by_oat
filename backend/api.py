@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from backend.agent import request_to_agent_chat
+from .agent import request_to_agent_chat
 import uvicorn
 import json
 import uuid
