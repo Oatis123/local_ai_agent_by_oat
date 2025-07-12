@@ -12,19 +12,32 @@ class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], operator.add]
 
 
-llm_tools = [get_screenshot_tool]
+llm_tools_vision = [get_screenshot_tool]
+llm_tools = []
 
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=api_key).bind_tools(llm_tools)
-#llm = ChatOllama(model="PetrosStav/gemma3-tools:4b").bind_tools(llm_tools)
+gemini = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=api_key).bind_tools(llm_tools_vision)
+gemma = ChatOllama(model="PetrosStav/gemma3-tools:4b").bind_tools(llm_tools_vision)
+qwen = ChatOllama(model="qwen3:4b").bind_tools(llm_tools)
 
-def call_model(state: AgentState):
+#Call functions for different models
+def call_model_gemini(state: AgentState):
     messages = state["messages"]
-    response = llm.invoke(messages)
+    response = gemini.invoke(messages)
+    return {"messages": [response]}
+
+def call_model_gemma(state: AgentState):
+    messages = state["messages"]
+    response = gemma.invoke(messages)
+    return {"messages": [response]}
+
+def call_model_qwen(state: AgentState):
+    messages = state["messages"]
+    response = qwen.invoke(messages)
     return {"messages": [response]}
 
 
-def call_tool(state: AgentState):
+def call_tool_vision(state: AgentState):
     ai_message = state["messages"][-1]
     tool_calls = ai_message.tool_calls
     messages_to_add = []
@@ -62,6 +75,22 @@ def call_tool(state: AgentState):
 
     return {"messages": messages_to_add}
 
+def call_tool(state: AgentState):
+    ai_message = state["messages"][-1]
+    tool_calls = ai_message.tool_calls
+    messages_to_add = []
+    tool_map = {t.name: t for t in llm_tools}
+
+    for tool_call in tool_calls:
+        tool_name = tool_call["name"]
+        tool_to_call = tool_map.get(tool_name)
+        if tool_to_call:
+            tool_output = tool_to_call.invoke(tool_call["args"])
+            tool_output_str = json.dumps(tool_output, ensure_ascii=False)
+            messages_to_add.append(ToolMessage(content=tool_output_str, tool_call_id=tool_call["id"]))
+
+    return {"messages": messages_to_add}
+
 
 def should_continue(state: AgentState):
     if state["messages"][-1].tool_calls:
@@ -70,14 +99,25 @@ def should_continue(state: AgentState):
         return END
     
 
-workflow = StateGraph(AgentState)
+workflow_gemini = StateGraph(AgentState)
+workflow_gemma = StateGraph(AgentState)
+workflow_qwen = StateGraph(AgentState)
 
-workflow.add_node("agent", call_model)
-workflow.add_node("action", call_tool)
+workflow_gemini.add_node("agent", call_model_gemini)
+workflow_gemini.add_node("action", call_tool_vision)
 
-workflow.set_entry_point("agent")
+workflow_gemma.add_node("agent", call_model_gemma)
+workflow_gemma.add_node("action", call_tool_vision)
 
-workflow.add_conditional_edges(
+workflow_qwen.add_node("agent", call_model_qwen)
+workflow_qwen.add_node("action", call_tool)
+
+
+workflow_gemini.set_entry_point("agent")
+workflow_gemma.set_entry_point("agent")
+workflow_qwen.set_entry_point("agent")
+
+workflow_gemini.add_conditional_edges(
     "agent",
     should_continue,
     {
@@ -86,6 +126,28 @@ workflow.add_conditional_edges(
     }
 )
 
-workflow.add_edge("action", "agent")
+workflow_gemma.add_conditional_edges(
+    "agent",
+    should_continue,
+    {
+        "call_tool": "action",
+        END: END
+    }
+)
 
-app = workflow.compile()
+workflow_qwen.add_conditional_edges(
+    "agent",
+    should_continue,
+    {
+        "call_tool": "action",
+        END: END
+    }
+)
+
+workflow_gemini.add_edge("action", "agent")
+workflow_gemma.add_edge("action", "agent")
+workflow_qwen.add_edge("action", "agent")
+
+app_gemini = workflow_gemini.compile()
+app_gemma = workflow_gemma.compile()
+app_qwen = workflow_qwen.compile()
