@@ -2,6 +2,7 @@ from fastapi import FastAPI
 import datetime
 from .agent.main import *
 from pathlib import Path
+import subprocess
 import uvicorn
 import json
 import uuid
@@ -126,3 +127,4 @@ def delet_chat(id: str):
 
 if __name__ == "__main__":
     uvicorn.run(app)
+    subprocess.run(["ollama", "serve"])

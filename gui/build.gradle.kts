@@ -1,9 +1,9 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
-    kotlin("jvm")
+    kotlin("jvm") version "1.9.23"
     kotlin("plugin.serialization") version "1.9.23"
-    id("org.jetbrains.compose")
+    id("org.jetbrains.compose") version "1.6.10"
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
@@ -35,6 +35,8 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:0.50.1")
     implementation("org.xerial:sqlite-jdbc:3.46.0.0")
     implementation(compose.desktop.currentOs)
+    implementation("com.vladsch.flexmark:flexmark-all:0.64.8") // Для парсинга Markdown
+    implementation(compose.material3)
 }
 
 compose.desktop {
